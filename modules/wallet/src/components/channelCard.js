@@ -73,7 +73,7 @@ class ChannelCard extends Component {
           {this.props.channelState ? (
             <span>{this.props.channelState.balanceWeiUser} Wei </span>
           ) : (
-            <span style={{ fontStyle: "italic" }}> Balance loading</span>
+            <span> 0 Wei</span>
           )}{" "}
         </Typography>
 
@@ -82,7 +82,7 @@ class ChannelCard extends Component {
           {this.props.channelState ? (
             <span>{this.props.channelState.balanceTokenUser} Wei </span>
           ) : (
-            <span style={{ fontStyle: "italic" }}> Balance loading</span>
+            <span>0 Wei</span>
           )}{" "}
         </Typography>
 
@@ -91,7 +91,7 @@ class ChannelCard extends Component {
           {this.props.channelState ? (
             <span>{this.props.channelState.balanceWeiHub} Wei </span>
           ) : (
-            <span style={{ fontStyle: "italic" }}>Balance loading</span>
+            <span>0 Wei</span>
           )}{" "}
         </Typography>
 
@@ -100,7 +100,7 @@ class ChannelCard extends Component {
           {this.props.channelState ? (
             <span>{this.props.channelState.balanceTokenHub} Wei </span>
           ) : (
-            <span style={{ fontStyle: "italic" }}>Balance loading</span>
+            <span>0 Wei</span>
           )}{" "}
         </Typography>
       </Card>
