@@ -364,6 +364,22 @@ export default class ChannelsService {
       )
     }
 
+    // this is kind of unsafe since its only checking the very latest update to see if the gas was refunded
+    if (this.config.userGasRefundAmount.isGreaterThan(0)) {
+      const latestState = await this.channelsDao.getLatestDoubleSignedState(user)
+      console.log('latestState: ', latestState);
+      const paymentArgs = latestState.args as PaymentArgsBigNumber
+      if (
+        latestState.reason !== 'Payment' || 
+        paymentArgs.amountToken.isLessThan(this.config.userGasRefundAmount) || 
+        paymentArgs.recipient !== 'hub'
+      ) {
+        throw new Error(
+          `Latest state does not contain a payment greater than or equal to the gas refund amount, latestState: ${prettySafeJson(latestState)}`
+        )
+      }
+    }
+
     params = {
       ...params,
       weiToSell: params.weiToSell || new BigNumber(0),
@@ -603,11 +619,11 @@ export default class ChannelsService {
       update.txCount,
     )
 
-    console.log('USER:', user)
-    console.log('CM:', this.config.channelManagerAddress)
-    console.log('CURRENT:', channel)
-    console.log('UPDATE:', update)
-    console.log('HUB VER:', hubsVersionOfUpdate)
+    LOG.info(`USER: ${prettySafeJson(user)}`)
+    LOG.info(`CM: ${prettySafeJson(this.config.channelManagerAddress)}`)
+    LOG.info(`CURRENT: ${prettySafeJson(channel)}`)
+    LOG.info(`UPDATE: ${prettySafeJson(update)}`)
+    LOG.info(`HUB VER: ${prettySafeJson(hubsVersionOfUpdate)}`)
 
     if (hubsVersionOfUpdate) {
       if (hubsVersionOfUpdate.invalid) {
