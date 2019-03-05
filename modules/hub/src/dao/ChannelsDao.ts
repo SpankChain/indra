@@ -18,7 +18,6 @@ import { Big } from '../util/bigNumber'
 import { emptyRootHash } from '../vendor/connext/Utils'
 import { default as log } from '../util/log'
 import { mkSig } from '../testing/stateUtils';
-import { OnchainTransactionRow } from '../domain/OnchainTransaction';
 
 export default interface ChannelsDao {
   getChannelByUser(user: string): Promise<ChannelRowBigNum | null>
