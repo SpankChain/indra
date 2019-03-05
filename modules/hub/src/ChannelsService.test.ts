@@ -37,7 +37,6 @@ import {
   InvalidationArgs,
   WithdrawalArgs,
   WithdrawalParametersBigNumber,
-  DepositArgsBigNumber,
   ConfirmPendingArgs,
 } from './vendor/connext/types'
 import Web3 = require('web3')
@@ -46,7 +45,6 @@ import {
   channelUpdateFactory,
   tokenVal,
   channelAndThreadFactory,
-  exchangeRateFactory,
 } from './testing/factories'
 import { StateGenerator } from './vendor/connext/StateGenerator'
 import PaymentsService from './PaymentsService';
@@ -56,7 +54,6 @@ import { BigNumber } from 'bignumber.js/bignumber'
 import ChannelDisputesDao from './dao/ChannelDisputesDao';
 import { RedisClient } from './RedisClient'
 import ThreadsService from './ThreadsService';
-import { Validator } from './vendor/connext/validator';
 
 function fieldsToWei<T>(obj: T): T {
   const res = {} as any
@@ -126,6 +123,9 @@ describe('ChannelsService', () => {
 
   beforeEach(async function () {
     await registry.clearDatabase()
+  })
+
+  afterEach(async function () {
   })
 
   it('should create an update for a user deposit request when channel does not exist', async () => {
@@ -1023,6 +1023,17 @@ describe('ChannelsService', () => {
   })
 })
 
+it('does not check when NO_CHECK is used', async () => {
+  const registry = getTestRegistry({
+    Config: getTestConfig({
+      shouldCollateralizeUrl: 'NO_CHECK',
+      isDev: false,
+    }),
+  })
+  const service: ChannelsService = registry.get('ChannelsService')
+  assert.equal(await service.shouldCollateralize('0x1234'), true)
+})
+
 describe('ChannelsService.shouldCollateralize', () => {
   const registry = getTestRegistry({
     Config: getTestConfig({
@@ -1052,17 +1063,6 @@ describe('ChannelsService.shouldCollateralize', () => {
     const res = await service.shouldCollateralize('0x1234')
     const expected = t.shouldCollateralize instanceof Error ? false : t.shouldCollateralize
     assert.equal(res, expected)
-  })
-
-  it('does not check when NO_CHECK is used', async () => {
-    const registry = getTestRegistry({
-      Config: getTestConfig({
-        shouldCollateralizeUrl: 'NO_CHECK',
-        isDev: false,
-      }),
-    })
-    const service: ChannelsService = registry.get('ChannelsService')
-    assert.equal(await service.shouldCollateralize('0x1234'), true)
   })
 })
 
@@ -1115,5 +1115,40 @@ describe('ChannelsService - refund user gas is a number', () => {
       amountWei: '0',
       recipient: 'user'
     } as PaymentArgs)
+  })
+
+  it('`does not allow withdrawal unless there is a payment`', async () => {
+    const chan = await channelUpdateFactory(registry, {
+      user: mkAddress('0x123'),
+      balanceTokenUser: Big('2e13').toFixed()
+    })
+    await assert.isRejected(service.doRequestWithdrawal(chan.user, {
+      exchangeRate: mockRate.toFixed(),
+      recipient: mkAddress(),
+      tokensToSell: Big(10),
+      withdrawalWeiUser: Big(0)
+    }), /Latest state does not contain a payment greater than or equal to the gas refund amount/)
+
+    const updates = await service.doUpdates(chan.user, [{
+      args: {
+        amountToken: Big(999999),
+        amountWei: Big(0),
+        recipient: 'hub'
+      },
+      reason: 'Payment',
+      txCount: chan.state.txCountGlobal + 1,
+      sigUser: mkSig()
+    }])
+
+    await service.doRequestWithdrawal(chan.user, {
+      exchangeRate: mockRate.toFixed(),
+      recipient: mkAddress(),
+      tokensToSell: Big('1e13'),
+      withdrawalWeiUser: Big(0)
+    })
+
+    const sync = await service.getChannelAndThreadUpdatesForSync(chan.user, 0, 0)
+    const latest = sync.updates.pop()
+    assert.equal((latest.update as UpdateRequest).reason, 'ProposePendingWithdrawal')
   })
 })
